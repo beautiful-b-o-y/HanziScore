@@ -13,8 +13,27 @@
     return response.json();
   }
 
+  async function submitCapture(payload) {
+    const response = await fetch("/api/captures", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Capture submit failed");
+    }
+
+    return result;
+  }
+
   window.HanziScoreApi = {
     health,
+    submitCapture,
   };
 
   document.addEventListener("DOMContentLoaded", async function () {

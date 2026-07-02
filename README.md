@@ -2,9 +2,20 @@
 
 HanziScore 是一个五天轻量 Demo，用来记录一个汉字怎样被写出来，而不是识别、纠错或评分。
 
-## Phase 1
+## Current Status
 
-当前阶段只包含最小 Flask 骨架、首页模板、静态资源和 JSON 数据目录。
+Phase 2 is complete:
+
+- Canvas renders a writing guide.
+- Pointer Events capture strokes and points.
+- Each point keeps `x`, `y`, `t`, and `pressure`.
+- Clear and save controls are available.
+- Save sends the capture JSON to Flask for validation.
+- Persistent JSON storage and metrics are reserved for Phase 3.
+
+## Run Locally
+
+当前项目包含 Flask 骨架、首页模板、静态资源、JSON 数据目录和 Canvas 书写采集。
 
 ```powershell
 py -m venv .venv

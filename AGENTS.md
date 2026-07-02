@@ -48,7 +48,7 @@ End-to-end loop:
 
 ## Current State
 
-Phase 1 is complete.
+Phase 2 is complete.
 
 Implemented:
 
@@ -58,11 +58,11 @@ Implemented:
 - JSON data directories under `data/`.
 - `requirements.txt`, `.gitignore`, and `README.md`.
 - `/health` endpoint returns app status.
+- Canvas Pointer Events capture is implemented.
+- Capture save sends JSON to Flask for validation but does not persist files yet.
 
 Not implemented yet:
 
-- Real Canvas writing capture.
-- Stroke JSON save endpoint.
 - Metrics calculation.
 - Replay workflow.
 - AI/cache/local-rule explanation.
@@ -151,4 +151,3 @@ At the end of each phase, report:
 - Commands run.
 - Test results.
 - Items the user needs to check personally.
-

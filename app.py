@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -32,9 +32,57 @@ def create_app() -> Flask:
         return jsonify(
             {
                 "app": "HanziScore",
-                "phase": 1,
+                "phase": 2,
                 "status": "ok",
                 "storage": "json-files",
+            }
+        )
+
+    @app.post("/api/captures")
+    def receive_capture():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "Expected a JSON object."}), 400
+
+        strokes = payload.get("strokes")
+        if not isinstance(strokes, list):
+            return jsonify({"error": "Expected strokes to be a list."}), 400
+
+        point_count = 0
+        for stroke in strokes:
+            if not isinstance(stroke, dict):
+                return jsonify({"error": "Each stroke must be an object."}), 400
+
+            points = stroke.get("points")
+            if not isinstance(points, list):
+                return jsonify({"error": "Each stroke must include a points list."}), 400
+
+            for point in points:
+                if not isinstance(point, dict):
+                    return jsonify({"error": "Each point must be an object."}), 400
+
+                missing_keys = {"x", "y", "t", "pressure"} - set(point)
+                if missing_keys:
+                    return (
+                        jsonify(
+                            {
+                                "error": "Each point must include x, y, t, and pressure.",
+                                "missing": sorted(missing_keys),
+                            }
+                        ),
+                        400,
+                    )
+
+            point_count += len(points)
+
+        return jsonify(
+            {
+                "phase": 2,
+                "status": "received",
+                "stored": False,
+                "targetCharacter": payload.get("targetCharacter", ""),
+                "strokeCount": len(strokes),
+                "pointCount": point_count,
             }
         )
 

@@ -31,27 +31,28 @@
           </div>
 
           <div class="toolbar" aria-label="书写工具栏">
-            <button type="button" disabled>清空</button>
-            <button type="button" disabled>保存</button>
+            <button type="button" id="clear-canvas" disabled>清空</button>
+            <button type="button" id="save-capture" disabled>保存</button>
           </div>
         </div>
 
         <aside class="side-panel" aria-label="当前状态">
-          <h2>阶段 1</h2>
-          <dl>
+          <h2>阶段 2</h2>
+          <dl class="capture-metrics">
             <div>
-              <dt>后端</dt>
-              <dd>Flask</dd>
+              <dt>笔画</dt>
+              <dd id="stroke-count">0</dd>
             </div>
             <div>
-              <dt>前端</dt>
-              <dd>原生 HTML/CSS/JS</dd>
+              <dt>点数</dt>
+              <dd id="point-count">0</dd>
             </div>
             <div>
-              <dt>存储</dt>
-              <dd>JSON 文件</dd>
+              <dt>输入</dt>
+              <dd id="pointer-types">未开始</dd>
             </div>
           </dl>
+          <p class="capture-status" id="capture-status">Ready</p>
         </aside>
       </section>
     </main>
