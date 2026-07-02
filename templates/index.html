@@ -37,7 +37,7 @@
         </div>
 
         <aside class="side-panel" aria-label="当前状态">
-          <h2>阶段 2</h2>
+          <h2>阶段 4</h2>
           <dl class="capture-metrics">
             <div>
               <dt>笔画</dt>
@@ -73,6 +73,71 @@
             </div>
           </dl>
           <p class="capture-status" id="capture-status">Ready</p>
+        </aside>
+      </section>
+
+      <section class="replay-workspace" aria-label="书写回放工作区">
+        <div class="replay-area">
+          <div class="field-row replay-selector-row">
+            <label for="record-select">记录</label>
+            <select id="record-select" disabled>
+              <option value="">暂无记录</option>
+            </select>
+          </div>
+
+          <div class="canvas-frame">
+            <canvas id="replay-canvas" aria-label="回放画布"></canvas>
+          </div>
+
+          <div class="toolbar replay-toolbar" aria-label="回放工具栏">
+            <button type="button" id="replay-play" disabled>播放</button>
+            <button type="button" id="replay-pause" disabled>暂停</button>
+            <button type="button" id="replay-reset" disabled>重置</button>
+            <label class="speed-control" for="replay-speed">
+              速度
+              <input id="replay-speed" type="range" min="0.25" max="4" step="0.25" value="1" disabled>
+              <span id="replay-speed-value">1x</span>
+            </label>
+          </div>
+        </div>
+
+        <aside class="side-panel replay-panel" aria-label="回放指标">
+          <h2>回放</h2>
+          <dl class="capture-metrics">
+            <div>
+              <dt>记录</dt>
+              <dd id="replay-record-id">--</dd>
+            </div>
+            <div>
+              <dt>目标字</dt>
+              <dd id="replay-target">--</dd>
+            </div>
+            <div>
+              <dt>笔画</dt>
+              <dd id="replay-strokes">--</dd>
+            </div>
+            <div>
+              <dt>点数</dt>
+              <dd id="replay-points">--</dd>
+            </div>
+            <div>
+              <dt>时长</dt>
+              <dd id="replay-duration">--</dd>
+            </div>
+            <div>
+              <dt>轨迹</dt>
+              <dd id="replay-path">--</dd>
+            </div>
+            <div>
+              <dt>均速</dt>
+              <dd id="replay-speed-metric">--</dd>
+            </div>
+            <div>
+              <dt>停顿</dt>
+              <dd id="replay-pauses">--</dd>
+            </div>
+          </dl>
+          <p class="capture-status" id="replay-status">Ready</p>
         </aside>
       </section>
     </main>

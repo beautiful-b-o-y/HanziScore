@@ -4,7 +4,7 @@ HanziScore 是一个五天轻量 Demo，用来记录一个汉字怎样被写出�
 
 ## Current Status
 
-Phase 3 is complete:
+Phase 4 is complete:
 
 - Canvas renders a writing guide.
 - Pointer Events capture strokes and points.
@@ -13,11 +13,13 @@ Phase 3 is complete:
 - Save writes the capture JSON to `data/samples/`.
 - Flask calculates stroke count, duration, path length, average speed, and pauses.
 - Analysis JSON is written to `data/analyses/`.
-- Replay and AI explanation are reserved for later phases.
+- Saved records can be loaded for Canvas replay.
+- Replay supports play, pause, reset, and speed control.
+- AI explanation is reserved for Phase 5.
 
 ## Run Locally
 
-当前项目包含 Flask 骨架、首页模板、静态资源、JSON 数据目录、Canvas 书写采集和基础指标计算。
+当前项目包含 Flask 骨架、首页模板、静态资源、JSON 数据目录、Canvas 书写采集、基础指标计算和前端回放。
 
 ```powershell
 py -m venv .venv

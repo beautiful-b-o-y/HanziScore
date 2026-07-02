@@ -2,6 +2,7 @@ import os
 import json
 import math
 import uuid
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -14,6 +15,7 @@ SAMPLES_DIR = DATA_DIR / "samples"
 ANALYSES_DIR = DATA_DIR / "analyses"
 AI_CACHE_PATH = DATA_DIR / "ai_cache.json"
 PAUSE_THRESHOLD_MS = 700
+RECORD_ID_PATTERN = re.compile(r"^\d{8}T\d{6}Z-[a-f0-9]{8}$")
 
 
 def ensure_data_paths() -> None:
@@ -39,6 +41,45 @@ def write_json(path: Path, data: dict) -> None:
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+
+
+def read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def is_valid_record_id(record_id: str) -> bool:
+    return bool(RECORD_ID_PATTERN.fullmatch(record_id))
+
+
+def summarize_analysis(analysis: dict) -> dict:
+    metrics = analysis.get("metrics") if isinstance(analysis.get("metrics"), dict) else {}
+    return {
+        "id": analysis.get("id", ""),
+        "createdAt": analysis.get("createdAt", ""),
+        "targetCharacter": analysis.get("targetCharacter", ""),
+        "strokeCount": metrics.get("strokeCount", 0),
+        "pointCount": metrics.get("pointCount", 0),
+        "durationMs": metrics.get("durationMs", 0),
+    }
+
+
+def list_saved_records() -> list[dict]:
+    records = []
+    for path in ANALYSES_DIR.glob("*.json"):
+        try:
+            analysis = read_json(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+
+        record_id = str(analysis.get("id") or path.stem)
+        if not is_valid_record_id(record_id):
+            continue
+
+        summary = summarize_analysis(analysis)
+        summary["id"] = record_id
+        records.append(summary)
+
+    return sorted(records, key=lambda record: record["id"], reverse=True)
 
 
 def validate_capture_payload(payload: object) -> tuple[dict | None, tuple[dict, int] | None]:
@@ -188,9 +229,37 @@ def create_app() -> Flask:
         return jsonify(
             {
                 "app": "HanziScore",
-                "phase": 3,
+                "phase": 4,
                 "status": "ok",
                 "storage": "json-files",
+            }
+        )
+
+    @app.get("/api/records")
+    def records():
+        return jsonify({"records": list_saved_records()})
+
+    @app.get("/api/records/<record_id>")
+    def record_detail(record_id: str):
+        if not is_valid_record_id(record_id):
+            return jsonify({"error": "Invalid record id."}), 400
+
+        sample_path = SAMPLES_DIR / f"{record_id}.json"
+        analysis_path = ANALYSES_DIR / f"{record_id}.json"
+        if not sample_path.exists() or not analysis_path.exists():
+            return jsonify({"error": "Record not found."}), 404
+
+        try:
+            sample = read_json(sample_path)
+            analysis = read_json(analysis_path)
+        except (OSError, json.JSONDecodeError):
+            return jsonify({"error": "Record could not be read."}), 500
+
+        return jsonify(
+            {
+                "id": record_id,
+                "sample": sample,
+                "analysis": analysis,
             }
         )
 

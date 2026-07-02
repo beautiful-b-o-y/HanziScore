@@ -31,9 +31,41 @@
     return result;
   }
 
+  async function listRecords() {
+    const response = await fetch("/api/records", {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Record list failed");
+    }
+
+    return result.records || [];
+  }
+
+  async function getRecord(recordId) {
+    const response = await fetch("/api/records/" + encodeURIComponent(recordId), {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Record load failed");
+    }
+
+    return result;
+  }
+
   window.HanziScoreApi = {
     health,
     submitCapture,
+    listRecords,
+    getRecord,
   };
 
   document.addEventListener("DOMContentLoaded", async function () {

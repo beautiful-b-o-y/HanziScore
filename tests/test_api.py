@@ -68,6 +68,25 @@ class CaptureApiTest(unittest.TestCase):
         self.assertEqual(sample["payload"]["targetCharacter"], "永")
         self.assertEqual(analysis["metrics"]["pathLengthPx"], 5)
 
+        list_response = self.client.get("/api/records")
+        records = list_response.get_json()["records"]
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(records[0]["id"], result["recordId"])
+        self.assertEqual(records[0]["strokeCount"], 1)
+
+        detail_response = self.client.get(f"/api/records/{result['recordId']}")
+        detail = detail_response.get_json()
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(detail["id"], result["recordId"])
+        self.assertEqual(detail["sample"]["payload"]["targetCharacter"], "永")
+        self.assertEqual(detail["analysis"]["metrics"]["pointCount"], 2)
+
+    def test_record_detail_rejects_invalid_record_id(self):
+        response = self.client.get("/api/records/not-a-record")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "Invalid record id.")
+
 
 if __name__ == "__main__":
     unittest.main()

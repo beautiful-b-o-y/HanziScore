@@ -48,7 +48,7 @@ End-to-end loop:
 
 ## Current State
 
-Phase 3 is complete.
+Phase 4 is complete.
 
 Implemented:
 
@@ -62,10 +62,11 @@ Implemented:
 - Capture save writes sample JSON to `data/samples/`.
 - Flask calculates stroke count, point count, duration, path length, average speed, and pauses.
 - Analysis JSON is written to `data/analyses/`.
+- Saved records can be listed and loaded through Flask JSON APIs.
+- Frontend replay is implemented with play, pause, reset, speed control, and metrics display.
 
 Not implemented yet:
 
-- Replay workflow.
 - AI/cache/local-rule explanation.
 
 ## Phase Plan

@@ -360,6 +360,13 @@
     try {
       var result = await window.HanziScoreApi.submitCapture(buildPayload());
       showMetrics(result);
+      document.dispatchEvent(
+        new CustomEvent("hanziscore:capture-saved", {
+          detail: {
+            recordId: result.recordId,
+          },
+        })
+      );
       updateStatus("Saved " + result.recordId);
     } catch (error) {
       updateStatus(error.message || "Save failed");
