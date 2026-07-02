@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HanziScore 字谱</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/api.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/capture.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/replay.js') }}" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">HanziScore / 字谱</p>
+          <h1>书写记录台</h1>
+        </div>
+        <span class="status-pill" id="app-status">Checking</span>
+      </header>
+
+      <section class="workspace" aria-label="书写记录工作区">
+        <div class="writing-area">
+          <div class="field-row">
+            <label for="target-character">目标字</label>
+            <input id="target-character" name="target-character" maxlength="4" placeholder="永">
+          </div>
+
+          <div class="canvas-frame">
+            <canvas id="writing-canvas" aria-label="书写画布"></canvas>
+          </div>
+
+          <div class="toolbar" aria-label="书写工具栏">
+            <button type="button" disabled>清空</button>
+            <button type="button" disabled>保存</button>
+          </div>
+        </div>
+
+        <aside class="side-panel" aria-label="当前状态">
+          <h2>阶段 1</h2>
+          <dl>
+            <div>
+              <dt>后端</dt>
+              <dd>Flask</dd>
+            </div>
+            <div>
+              <dt>前端</dt>
+              <dd>原生 HTML/CSS/JS</dd>
+            </div>
+            <div>
+              <dt>存储</dt>
+              <dd>JSON 文件</dd>
+            </div>
+          </dl>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>
