@@ -11,6 +11,11 @@
   var strokeCount = null;
   var pointCount = null;
   var pointerTypes = null;
+  var durationValue = null;
+  var pathLengthValue = null;
+  var speedValue = null;
+  var pauseCountValue = null;
+  var recordIdValue = null;
   var captureStatus = null;
 
   function drawGuide(width, height) {
@@ -192,6 +197,44 @@
     }
   }
 
+  function resetMetrics() {
+    if (durationValue) {
+      durationValue.textContent = "--";
+    }
+    if (pathLengthValue) {
+      pathLengthValue.textContent = "--";
+    }
+    if (speedValue) {
+      speedValue.textContent = "--";
+    }
+    if (pauseCountValue) {
+      pauseCountValue.textContent = "--";
+    }
+    if (recordIdValue) {
+      recordIdValue.textContent = "--";
+    }
+  }
+
+  function showMetrics(result) {
+    var metrics = result.metrics || {};
+
+    if (durationValue) {
+      durationValue.textContent = String(metrics.durationMs || 0) + " ms";
+    }
+    if (pathLengthValue) {
+      pathLengthValue.textContent = String(metrics.pathLengthPx || 0) + " px";
+    }
+    if (speedValue) {
+      speedValue.textContent = String(metrics.averageSpeedPxPerSecond || 0) + " px/s";
+    }
+    if (pauseCountValue) {
+      pauseCountValue.textContent = String(metrics.pauseCount || 0);
+    }
+    if (recordIdValue) {
+      recordIdValue.textContent = result.recordId || "--";
+    }
+  }
+
   function beginStroke(event) {
     event.preventDefault();
 
@@ -263,6 +306,7 @@
     captureStartMs = null;
     redraw();
     updateCounters();
+    resetMetrics();
     updateStatus("Cleared");
   }
 
@@ -315,9 +359,8 @@
 
     try {
       var result = await window.HanziScoreApi.submitCapture(buildPayload());
-      updateStatus(
-        "Received " + result.strokeCount + " strokes / " + result.pointCount + " points"
-      );
+      showMetrics(result);
+      updateStatus("Saved " + result.recordId);
     } catch (error) {
       updateStatus(error.message || "Save failed");
     } finally {
@@ -338,6 +381,11 @@
     strokeCount = document.getElementById("stroke-count");
     pointCount = document.getElementById("point-count");
     pointerTypes = document.getElementById("pointer-types");
+    durationValue = document.getElementById("duration-value");
+    pathLengthValue = document.getElementById("path-length-value");
+    speedValue = document.getElementById("speed-value");
+    pauseCountValue = document.getElementById("pause-count-value");
+    recordIdValue = document.getElementById("record-id-value");
     captureStatus = document.getElementById("capture-status");
 
     fitCanvas();
@@ -357,5 +405,6 @@
     }
 
     updateCounters();
+    resetMetrics();
   });
 })();

@@ -207,6 +207,7 @@ h2 {
 .side-panel dd {
   margin: 4px 0 0;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .capture-status {
