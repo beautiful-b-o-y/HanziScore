@@ -129,6 +129,10 @@
     return currentRecord && currentRecord.analysis ? currentRecord.analysis.metrics || {} : {};
   }
 
+  function getBrushSize(stroke) {
+    return Number(stroke && stroke.brushSize) || 7;
+  }
+
   function getTimelineStart() {
     var start = Infinity;
     getStrokes().forEach(function (stroke) {
@@ -169,19 +173,21 @@
     };
   }
 
-  function drawDot(point) {
+  function drawDot(point, stroke) {
     var transformed = transformPoint(point);
+    var brushSize = getBrushSize(stroke);
     context.fillStyle = "#1f2925";
     context.beginPath();
-    context.arc(transformed.x, transformed.y, 1.8 + transformed.pressure, 0, Math.PI * 2);
+    context.arc(transformed.x, transformed.y, Math.max(2, brushSize * 0.45 + transformed.pressure), 0, Math.PI * 2);
     context.fill();
   }
 
-  function drawSegment(previousPoint, nextPoint) {
+  function drawSegment(previousPoint, nextPoint, stroke) {
     var previous = transformPoint(previousPoint);
     var next = transformPoint(nextPoint);
+    var brushSize = getBrushSize(stroke);
     context.strokeStyle = "#1f2925";
-    context.lineWidth = 2.4 + next.pressure * 2.2;
+    context.lineWidth = brushSize + next.pressure * 1.2;
     context.lineCap = "round";
     context.lineJoin = "round";
     context.beginPath();
@@ -207,7 +213,7 @@
 
       var firstPointTime = (Number(points[0].t) || 0) - timelineStart;
       if (firstPointTime <= elapsedMs) {
-        drawDot(points[0]);
+        drawDot(points[0], stroke);
       }
 
       for (var index = 1; index < points.length; index += 1) {
@@ -217,7 +223,7 @@
         var currentTime = (Number(current.t) || 0) - timelineStart;
 
         if (currentTime <= elapsedMs) {
-          drawSegment(previous, current);
+          drawSegment(previous, current, stroke);
         } else if (previousTime <= elapsedMs && currentTime > previousTime) {
           var progress = (elapsedMs - previousTime) / (currentTime - previousTime);
           var partial = {
@@ -227,7 +233,7 @@
               Number(previous.pressure || 0.5) +
               (Number(current.pressure || 0.5) - Number(previous.pressure || 0.5)) * progress,
           };
-          drawSegment(previous, partial);
+          drawSegment(previous, partial, stroke);
           break;
         } else if (previousTime > elapsedMs) {
           break;

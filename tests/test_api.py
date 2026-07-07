@@ -47,6 +47,7 @@ class CaptureApiTest(unittest.TestCase):
                 {
                     "id": "stroke-1",
                     "pointerType": "mouse",
+                    "brushSize": 9,
                     "points": [
                         {"x": 0, "y": 0, "t": 0, "pressure": 0.5},
                         {"x": 3, "y": 4, "t": 100, "pressure": 0.5},
@@ -72,6 +73,7 @@ class CaptureApiTest(unittest.TestCase):
         sample = json.loads(sample_path.read_text(encoding="utf-8"))
         analysis = json.loads(analysis_path.read_text(encoding="utf-8"))
         self.assertEqual(sample["payload"]["targetCharacter"], "永")
+        self.assertEqual(sample["payload"]["strokes"][0]["brushSize"], 9)
         self.assertEqual(analysis["metrics"]["pathLengthPx"], 5)
         self.assertEqual(analysis["strokes"][0]["id"], "stroke-1")
         self.assertIn("raw_points", analysis["strokes"][0])
@@ -130,7 +132,7 @@ class CaptureApiTest(unittest.TestCase):
         self.assertEqual(first["source"], "local_rules")
         self.assertEqual(first["sourceLabel"], "本地规则")
         self.assertIn("text", first)
-        self.assertIn("本次记录", first["text"])
+        self.assertIn("这次书写", first["text"])
         self.assertIn("不是汉字识别", first["text"])
 
         second_response = self.client.get(f"/api/records/{record_id}/explanation")
@@ -228,7 +230,7 @@ class CaptureApiTest(unittest.TestCase):
         self.assertIn("observation_questions", explanation_json)
         self.assertIn("uncertainty", explanation_json)
         self.assertTrue(explanation_json["candidate_labels"][0]["label"].startswith("\u5019\u9009\uff1a"))
-        self.assertIn("sharp_turn", explanation_json["candidate_labels"][0]["evidence"])
+        self.assertIn("转折", explanation_json["candidate_labels"][0]["evidence"])
         self.assertIn("\u5019\u9009\u6807\u6ce8", text)
 
     def test_zhipu_request_uses_chat_messages_and_metrics_only(self):

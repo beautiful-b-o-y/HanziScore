@@ -55,7 +55,7 @@ EXPLANATION_SOURCE_LABELS = {
     "zhipu": "智谱",
     "local_rules": "本地规则",
 }
-EXPLANATION_PROTOCOL_VERSION = 2
+EXPLANATION_PROTOCOL_VERSION = 3
 
 
 def ensure_data_paths() -> None:
@@ -213,10 +213,19 @@ def validate_capture_payload(payload: object) -> tuple[dict | None, tuple[dict, 
 
             normalized_points.append(normalized_point)
 
+        try:
+            brush_size = float(stroke.get("brushSize", 7))
+        except (TypeError, ValueError):
+            return None, ({"error": "Stroke brushSize must be numeric."}, 400)
+
+        if not math.isfinite(brush_size):
+            return None, ({"error": "Stroke brushSize must be a finite number."}, 400)
+
         normalized_strokes.append(
             {
                 "id": str(stroke.get("id") or f"stroke-{stroke_index}"),
                 "pointerType": str(stroke.get("pointerType") or "unknown"),
+                "brushSize": max(1, min(32, round(brush_size, 2))),
                 "points": normalized_points,
             }
         )
@@ -555,14 +564,19 @@ def build_explanation_prompt(analysis: dict) -> str:
     evidence_json = json.dumps(compact_metrics_for_prompt(analysis), ensure_ascii=False, indent=2)
     return (
         "你是 HanziScore（字谱）的书写过程研究助手。必须只返回 JSON，不要返回 Markdown。\n"
-        "请使用中文解释。你的任务不是评价书写，而是把可计算特征组织成可阅读、可比较、可沉淀的研究材料。\n"
+        "请使用中文解释。你的任务不是评价书写，而是把可计算特征翻译成普通人能直观感受的节奏描述。\n"
         "只能引用下方提供的数值指标、strokeEvidence 和 dataEvents 作为证据，不要使用原始轨迹。\n"
+        "这些数值只作为内部证据；最终文字不要密集罗列数据，不要像检测报告。\n"
+        "如果必须出现数字，最多保留 2 到 3 个关键锚点，并用它们解释节奏关系。\n"
+        "优先使用这类语言：更连贯、放慢、停了一下、转折更明显、节奏分界、推进较快、末端收住。\n"
         "不要识别汉字，不要判断笔顺，不要评价书法水平，不要打分，不要推断部件，"
         "不要推断书写者人格、能力或真实情绪状态，也不要把候选解释说成专家标签。\n"
         "当证据不足时必须说明不确定性。\n"
         "JSON 顶层必须包含这些字段：summary、evidence、rhythm_interpretation、"
         "candidate_labels、uncertainty、observation_questions、caution。\n"
-        "candidate_labels 必须是数组，每项包含 label、evidence、uncertainty；label 必须以“候选：”开头。\n"
+        "evidence 必须是简短的可读观察，不要逐项列出所有原始数值。\n"
+        "candidate_labels 必须是数组，每项包含 label、evidence、uncertainty；label 必须以“候选：”开头，"
+        "evidence 要用人类可感受的描述，不要堆叠阈值和单位。\n"
         "observation_questions 必须是数组，用于提出后续可观察、可比较的问题。\n\n"
         f"本地证据如下，不包含原始轨迹数组：\n{evidence_json}"
     )
@@ -642,19 +656,28 @@ def format_explanation_json(explanation: dict) -> str:
     return "\n\n".join(collect_explanation_text(explanation))
 
 
+def describe_event_for_reader(event_type: str) -> str:
+    descriptions = {
+        "low_speed_stroke": "这一笔整体推进较慢，像是有意放缓或更谨慎地移动。",
+        "high_speed_stroke": "这一笔出现了较快的推进，节奏感更直接。",
+        "long_duration_stroke": "这一笔停留时间较长，在整次书写里显得更有分量。",
+        "long_pause_before": "这一笔开始前有明显停顿，像是先停了一下再继续。",
+        "long_pause_after": "这一笔结束后有明显停顿，容易形成节奏分界。",
+        "speed_variation": "这一笔内部快慢变化较明显，不是匀速滑过。",
+        "fast_start": "这一笔起笔阶段推进较快。",
+        "slow_end": "这一笔末端明显放慢，像是在收住动作。",
+        "sharp_turn": "这一笔里有较明显的方向变化，转折感更突出。",
+    }
+    return descriptions.get(event_type, "这一笔触发了一个局部书写事件，适合后续对比观察。")
+
+
 def event_to_candidate_label(event: dict) -> dict:
     event_type = str(event.get("type", "data_event"))
     stroke_index = event.get("strokeIndex", "?")
-    value = event.get("value", "?")
-    unit = event.get("unit", "")
-    threshold = event.get("threshold", "?")
     label = EVENT_LABEL_TITLES.get(event_type, f"候选：{event_type}")
     return {
         "label": label,
-        "evidence": (
-            f"第 {stroke_index} 笔触发 {event_type}，数值为 {value} {unit}，"
-            f"阈值为 {threshold}。"
-        ),
+        "evidence": f"第 {stroke_index} 笔：{describe_event_for_reader(event_type)}",
         "uncertainty": "该标签只是开放编码候选项，不能作为专家结论或书写质量判断。",
     }
 
@@ -672,52 +695,49 @@ def build_local_explanation_json(analysis: dict) -> dict:
     records = evidence["strokeEvidence"]
     data_events = evidence["dataEvents"]
     stroke_count = metrics.get("strokeCount", 0)
-    point_count = metrics.get("pointCount", 0)
-    duration_ms = metrics.get("durationMs", 0)
-    path_length = metrics.get("pathLengthPx", 0)
-    average_speed = metrics.get("averageSpeedPxPerSecond", 0)
     pause_count = metrics.get("pauseCount", 0)
-    pause_threshold = metrics.get("pauseThresholdMs", PAUSE_THRESHOLD_MS)
 
     evidence_lines = [
-        f"本次记录包含 {stroke_count} 个笔画、{point_count} 个采样点，总时长 {duration_ms} ms。",
-        f"总轨迹长度为 {path_length} px，整体平均速度为 {average_speed} px/s。",
-        f"系统检测到 {pause_count} 次不短于 {pause_threshold} ms 的停顿。",
+        f"这次书写共有 {stroke_count} 个笔画，整体可以作为一个完整的书写节奏来观察。",
     ]
+    if pause_count:
+        evidence_lines.append("书写过程中出现了可感知的停顿，节奏不是一路连续推进。")
+    else:
+        evidence_lines.append("书写过程中没有明显长停顿，整体衔接更接近连续推进。")
 
     longest = pick_extreme(records, "durationMs")
     slowest = pick_extreme(records, "meanSpeedPxPerSecond", reverse=False)
     fastest = pick_extreme(records, "maxSpeedPxPerSecond")
     most_turns = pick_extreme(records, "turningPointCount")
     if longest:
-        evidence_lines.append(f"第 {longest['strokeIndex']} 笔持续时间最长，为 {longest['durationMs']} ms。")
+        evidence_lines.append(f"第 {longest['strokeIndex']} 笔在时间上最突出，像是本次书写里被更慢处理的位置。")
     if slowest:
         evidence_lines.append(
-            f"第 {slowest['strokeIndex']} 笔平均速度最低，为 {slowest['meanSpeedPxPerSecond']} px/s。"
+            f"第 {slowest['strokeIndex']} 笔整体移动更慢，适合作为节奏放缓的位置来观察。"
         )
     if fastest:
         evidence_lines.append(
-            f"第 {fastest['strokeIndex']} 笔最大速度最高，为 {fastest['maxSpeedPxPerSecond']} px/s。"
+            f"第 {fastest['strokeIndex']} 笔出现了更快的推进，和较慢的笔画形成对比。"
         )
     if most_turns and most_turns.get("turningPointCount", 0):
         evidence_lines.append(
-            f"第 {most_turns['strokeIndex']} 笔转折点最多，共 {most_turns['turningPointCount']} 个。"
+            f"第 {most_turns['strokeIndex']} 笔方向变化更集中，视觉上更容易感到转折。"
         )
 
     if longest and slowest and longest["strokeIndex"] == slowest["strokeIndex"]:
         rhythm = (
-            f"从时间和速度数据看，第 {longest['strokeIndex']} 笔同时表现为持续时间较长、"
-            "平均速度较低，可以作为本次样本中节奏变化较明显的位置来观察。"
+            f"从节奏上看，第 {longest['strokeIndex']} 笔既花得更久，也推进得更慢，"
+            "因此它更像是本次书写里的一个放缓点。这个位置可以作为后续比较的重点。"
         )
     elif data_events:
         rhythm = (
-            "从 dataEvents 看，本次样本存在若干局部节奏信号；这些信号适合用于比较不同样本中"
-            "快慢、停顿和转折是否反复出现在相近位置。"
+            "从局部事件看，本次样本里有一些快慢、停顿或转折的变化。它们不说明写得好坏，"
+            "但能帮助我们描述这次书写哪里更连贯、哪里更像发生了节奏分界。"
         )
     else:
         rhythm = (
-            "当前阈值下未出现明显 data event，整体节奏解释应保持保守，主要依据总时长、"
-            "平均速度和停顿数量进行描述。"
+            "当前没有明显触发局部事件，解释应保持保守。可以先把它看作一次节奏较平顺的记录，"
+            "再通过更多样本判断这种平顺是否稳定出现。"
         )
 
     candidate_labels = [event_to_candidate_label(event) for event in data_events[:8]]
@@ -725,7 +745,7 @@ def build_local_explanation_json(analysis: dict) -> dict:
         candidate_labels = [
             {
                 "label": "候选：未见显著阈值事件",
-                "evidence": "当前记录没有触发已配置的 dataEvents 阈值。",
+                "evidence": "当前记录没有出现足够明显的局部快慢、停顿或转折信号。",
                 "uncertainty": "这不代表书写没有变化，只说明现有阈值下没有形成候选事件。",
             }
         ]
@@ -742,8 +762,8 @@ def build_local_explanation_json(analysis: dict) -> dict:
 
     return {
         "summary": (
-            "本次解释把本地计算出的速度、时长、停顿、转折和 dataEvents 组织为研究观察材料，"
-            "不增加新的事实判断。"
+            "本次解释把后台计算出的节奏线索转成可读的观察说明，重点看哪里更连贯、"
+            "哪里放慢、哪里可能形成节奏分界。"
         ),
         "evidence": evidence_lines,
         "rhythm_interpretation": rhythm,

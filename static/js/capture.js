@@ -8,6 +8,8 @@
   var clearButton = null;
   var saveButton = null;
   var targetInput = null;
+  var brushSizeInput = null;
+  var brushSizeValue = null;
   var strokeCount = null;
   var pointCount = null;
   var pointerTypes = null;
@@ -64,18 +66,30 @@
     canvas.dataset.ready = "true";
   }
 
-  function drawDot(point) {
+  function getBrushSize(stroke) {
+    if (stroke && Number.isFinite(Number(stroke.brushSize))) {
+      return Number(stroke.brushSize);
+    }
+    if (brushSizeInput) {
+      return Number(brushSizeInput.value) || 7;
+    }
+    return 7;
+  }
+
+  function drawDot(point, stroke) {
     var pressure = point.pressure || 0.5;
+    var brushSize = getBrushSize(stroke);
     context.fillStyle = "#1f2925";
     context.beginPath();
-    context.arc(point.x, point.y, 1.8 + pressure, 0, Math.PI * 2);
+    context.arc(point.x, point.y, Math.max(2, brushSize * 0.45 + pressure), 0, Math.PI * 2);
     context.fill();
   }
 
-  function drawSegment(previousPoint, nextPoint) {
+  function drawSegment(previousPoint, nextPoint, stroke) {
     var pressure = nextPoint.pressure || 0.5;
+    var brushSize = getBrushSize(stroke);
     context.strokeStyle = "#1f2925";
-    context.lineWidth = 2.4 + pressure * 2.2;
+    context.lineWidth = brushSize + pressure * 1.2;
     context.lineCap = "round";
     context.lineJoin = "round";
     context.beginPath();
@@ -84,14 +98,15 @@
     context.stroke();
   }
 
-  function drawStroke(points) {
+  function drawStroke(stroke) {
+    var points = stroke.points || [];
     if (!points.length) {
       return;
     }
 
-    drawDot(points[0]);
+    drawDot(points[0], stroke);
     for (var index = 1; index < points.length; index += 1) {
-      drawSegment(points[index - 1], points[index]);
+      drawSegment(points[index - 1], points[index], stroke);
     }
   }
 
@@ -104,11 +119,11 @@
     drawGuide(rect.width, rect.height);
 
     strokes.forEach(function (stroke) {
-      drawStroke(stroke.points);
+      drawStroke(stroke);
     });
 
     if (activeStroke) {
-      drawStroke(activeStroke.points);
+      drawStroke(activeStroke);
     }
   }
 
@@ -154,9 +169,9 @@
 
       points.push(point);
       if (previousPoint) {
-        drawSegment(previousPoint, point);
+        drawSegment(previousPoint, point, activeStroke);
       } else {
-        drawDot(point);
+        drawDot(point, activeStroke);
       }
     });
   }
@@ -250,6 +265,7 @@
     activeStroke = {
       id: "stroke-" + String(strokes.length + 1),
       pointerType: event.pointerType || "unknown",
+      brushSize: getBrushSize(),
       points: [],
     };
 
@@ -335,6 +351,7 @@
         return {
           id: stroke.id,
           pointerType: stroke.pointerType,
+          brushSize: stroke.brushSize,
           points: stroke.points.map(function (point) {
             return {
               x: point.x,
@@ -385,6 +402,8 @@
     clearButton = document.getElementById("clear-canvas");
     saveButton = document.getElementById("save-capture");
     targetInput = document.getElementById("target-character");
+    brushSizeInput = document.getElementById("brush-size");
+    brushSizeValue = document.getElementById("brush-size-value");
     strokeCount = document.getElementById("stroke-count");
     pointCount = document.getElementById("point-count");
     pointerTypes = document.getElementById("pointer-types");
@@ -409,6 +428,12 @@
     }
     if (saveButton) {
       saveButton.addEventListener("click", saveCapture);
+    }
+    if (brushSizeInput && brushSizeValue) {
+      brushSizeInput.addEventListener("input", function () {
+        brushSizeValue.textContent = brushSizeInput.value + " px";
+      });
+      brushSizeValue.textContent = brushSizeInput.value + " px";
     }
 
     updateCounters();

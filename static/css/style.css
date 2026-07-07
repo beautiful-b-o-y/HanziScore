@@ -160,6 +160,27 @@ h2 {
   outline: 3px solid rgba(47, 111, 115, 0.16);
 }
 
+.brush-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.brush-control input {
+  flex: 0 1 180px;
+  width: 180px;
+}
+
+#brush-size-value {
+  min-width: 4.5ch;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
 .replay-selector-row {
   align-items: stretch;
 }

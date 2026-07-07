@@ -9,6 +9,8 @@ Phase 6 is complete:
 - Canvas renders a writing guide.
 - Pointer Events capture strokes and points.
 - Each point keeps `x`, `y`, `t`, and `pressure`.
+- Mouse writing includes a lightweight brush-size control for a more legible
+  visual stroke.
 - Save writes capture JSON to `data/samples/`.
 - Flask calculates stroke count, duration, path length, average speed, and pauses.
 - Analysis JSON is written to `data/analyses/`.
@@ -108,6 +110,11 @@ uncertainty visible, and avoid character recognition, stroke-order judgment,
 calligraphy scoring, component detection, personality inference, ability
 inference, or claims about the writer's real emotional state.
 
+User-facing explanations should not read like raw metric dumps. Numeric metrics
+and thresholds are used as internal evidence, while the displayed explanation
+should favor intuitive rhythm language such as slower movement, clearer pause,
+sharper turn, faster start, or a possible rhythm boundary.
+
 ## Phase 6 Stroke Event Fields
 
 Saved samples still keep the original raw capture payload under `data/samples/`.
@@ -131,6 +138,10 @@ contains:
 
 The analysis also includes `event_summary.data_events`, a compact list used by
 the frontend event table and by AI/local explanation evidence.
+
+Mouse brush size is stored as `brushSize` on each stroke so replay can preserve
+the visible stroke weight. This is a display setting, not a claim about real
+stylus pressure.
 
 These events describe movement data only. They are not character recognition,
 stroke-order standards, calligraphy scores, component detection, expert
