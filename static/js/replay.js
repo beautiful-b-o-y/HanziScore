@@ -8,6 +8,12 @@
   var speedInput = null;
   var speedValue = null;
   var replayStatus = null;
+  var explanationButton = null;
+  var explanationSource = null;
+  var explanationText = null;
+  var eventSummary = null;
+  var strokeDetailGrid = null;
+  var dataEventTable = null;
   var metricEls = {};
   var currentRecord = null;
   var currentTimeMs = 0;
@@ -39,6 +45,18 @@
     }
     if (speedInput) {
       speedInput.disabled = !enabled;
+    }
+    if (explanationButton) {
+      explanationButton.disabled = !enabled;
+    }
+  }
+
+  function resetExplanation(message) {
+    if (explanationSource) {
+      explanationSource.textContent = "--";
+    }
+    if (explanationText) {
+      explanationText.textContent = message || "Select a record to generate an explanation.";
     }
   }
 
@@ -296,6 +314,133 @@
     metricEls.pauses.textContent = String(metrics.pauseCount ?? "--");
   }
 
+  function formatNumber(value, suffix) {
+    if (!Number.isFinite(Number(value))) {
+      return "--";
+    }
+    return String(value) + (suffix || "");
+  }
+
+  function getAnalysisStrokes() {
+    var analysis = currentRecord && currentRecord.analysis ? currentRecord.analysis : {};
+    return Array.isArray(analysis.strokes) ? analysis.strokes : [];
+  }
+
+  function getDataEvents() {
+    var analysis = currentRecord && currentRecord.analysis ? currentRecord.analysis : {};
+    var summary = analysis.event_summary || {};
+    return Array.isArray(summary.data_events) ? summary.data_events : [];
+  }
+
+  function clearChildren(element) {
+    if (!element) {
+      return;
+    }
+    while (element.firstChild) {
+      element.removeChild(element.firstChild);
+    }
+  }
+
+  function appendMetric(parent, label, value) {
+    var item = document.createElement("div");
+    var title = document.createElement("dt");
+    var detail = document.createElement("dd");
+    title.textContent = label;
+    detail.textContent = value;
+    item.appendChild(title);
+    item.appendChild(detail);
+    parent.appendChild(item);
+  }
+
+  function renderStrokeEvents() {
+    var strokes = getAnalysisStrokes();
+    var events = getDataEvents();
+
+    if (eventSummary) {
+      eventSummary.textContent = currentRecord
+        ? strokes.length + " stroke event record(s), " + events.length + " data event(s)."
+        : "Select a saved record to view stroke-level events.";
+    }
+
+    clearChildren(strokeDetailGrid);
+    clearChildren(dataEventTable);
+
+    if (!currentRecord) {
+      if (dataEventTable) {
+        var emptyRow = document.createElement("tr");
+        var emptyCell = document.createElement("td");
+        emptyCell.colSpan = 4;
+        emptyCell.textContent = "No record loaded.";
+        emptyRow.appendChild(emptyCell);
+        dataEventTable.appendChild(emptyRow);
+      }
+      return;
+    }
+
+    strokes.forEach(function (stroke) {
+      var geometry = stroke.geometry || {};
+      var dynamics = stroke.dynamics || {};
+      var card = document.createElement("article");
+      var heading = document.createElement("h3");
+      var metrics = document.createElement("dl");
+      var labelLine = document.createElement("p");
+      var visualNote = document.createElement("p");
+      var labels = Array.isArray(stroke.labels) ? stroke.labels : [];
+      var turns = Array.isArray(geometry.turning_points) ? geometry.turning_points : [];
+
+      card.className = "stroke-card";
+      metrics.className = "stroke-card-metrics";
+      labelLine.className = "stroke-labels";
+      visualNote.className = "visual-note";
+
+      heading.textContent = "Stroke " + stroke.index;
+      appendMetric(metrics, "Mean speed", formatNumber(dynamics.mean_speed, " px/s"));
+      appendMetric(metrics, "Max speed", formatNumber(dynamics.max_speed, " px/s"));
+      appendMetric(metrics, "Pause before", formatNumber(dynamics.pause_before_ms, " ms"));
+      appendMetric(metrics, "Pause after", formatNumber(dynamics.pause_after_ms, " ms"));
+      appendMetric(metrics, "Turns", String(turns.length));
+      appendMetric(metrics, "Path", formatNumber(geometry.path_length, " px"));
+
+      labelLine.textContent = labels.length
+        ? labels.map(function (label) { return label.type; }).join(", ")
+        : "No data event labels crossed thresholds.";
+      visualNote.textContent =
+        stroke.visual_proxy && stroke.visual_proxy.width_profile_source
+          ? "Width proxy: " + stroke.visual_proxy.width_profile_source
+          : "Width proxy: unavailable";
+
+      card.appendChild(heading);
+      card.appendChild(metrics);
+      card.appendChild(labelLine);
+      card.appendChild(visualNote);
+      strokeDetailGrid.appendChild(card);
+    });
+
+    if (!events.length && dataEventTable) {
+      var noEventRow = document.createElement("tr");
+      var noEventCell = document.createElement("td");
+      noEventCell.colSpan = 4;
+      noEventCell.textContent = "No data events crossed the configured thresholds.";
+      noEventRow.appendChild(noEventCell);
+      dataEventTable.appendChild(noEventRow);
+      return;
+    }
+
+    events.forEach(function (event) {
+      var row = document.createElement("tr");
+      ["strokeIndex", "type", "value", "threshold"].forEach(function (key) {
+        var cell = document.createElement("td");
+        if (key === "value" || key === "threshold") {
+          cell.textContent = String(event[key]) + (event.unit ? " " + event.unit : "");
+        } else {
+          cell.textContent = String(event[key] || "--");
+        }
+        row.appendChild(cell);
+      });
+      dataEventTable.appendChild(row);
+    });
+  }
+
   function formatRecordOption(record) {
     var target = record.targetCharacter ? " / " + record.targetCharacter : "";
     var strokes = record.strokeCount !== undefined ? " / " + record.strokeCount + " strokes" : "";
@@ -306,8 +451,10 @@
     if (!recordId || !window.HanziScoreApi) {
       currentRecord = null;
       updateMetrics();
+      renderStrokeEvents();
       setControlsEnabled(false);
       drawFrame(0);
+      resetExplanation();
       updateStatus("No record");
       return;
     }
@@ -319,15 +466,62 @@
       currentRecord = await window.HanziScoreApi.getRecord(recordId);
       currentTimeMs = 0;
       updateMetrics();
+      renderStrokeEvents();
       setControlsEnabled(true);
       drawFrame(currentTimeMs);
+      resetExplanation("Click Generate explanation to view the writing-process note.");
       updateStatus("Ready");
     } catch (error) {
       currentRecord = null;
       updateMetrics();
+      renderStrokeEvents();
       setControlsEnabled(false);
       drawFrame(0);
+      resetExplanation();
       updateStatus(error.message || "Load failed");
+    }
+  }
+
+  async function loadExplanation() {
+    if (!currentRecord || !window.HanziScoreApi || !window.HanziScoreApi.getExplanation) {
+      return;
+    }
+
+    explanationButton.disabled = true;
+    if (explanationSource) {
+      explanationSource.textContent = "Generating";
+    }
+    if (explanationText) {
+      explanationText.textContent = "Generating explanation...";
+    }
+
+    try {
+      var result = await window.HanziScoreApi.getExplanation(currentRecord.id);
+      var sourceLabel = result.sourceLabel || result.source || "--";
+      if (result.cachedSourceLabel) {
+        sourceLabel += " / Original source: " + result.cachedSourceLabel;
+      }
+      if (explanationSource) {
+        explanationSource.textContent = sourceLabel;
+      }
+      if (explanationText) {
+        var explanationBody = result.text || "No explanation available.";
+        if (result.fallbackReason) {
+          explanationBody += "\n\nZhipu fallback reason: " + result.fallbackReason;
+        }
+        explanationText.textContent = explanationBody;
+      }
+      updateStatus("Explanation ready");
+    } catch (error) {
+      if (explanationSource) {
+        explanationSource.textContent = "--";
+      }
+      if (explanationText) {
+        explanationText.textContent = error.message || "Explanation failed";
+      }
+      updateStatus(error.message || "Explanation failed");
+    } finally {
+      explanationButton.disabled = !currentRecord;
     }
   }
 
@@ -343,12 +537,14 @@
       if (!records.length) {
         var emptyOption = document.createElement("option");
         emptyOption.value = "";
-        emptyOption.textContent = "暂无记录";
+        emptyOption.textContent = "No records";
         recordSelect.appendChild(emptyOption);
         currentRecord = null;
         updateMetrics();
+        renderStrokeEvents();
         setControlsEnabled(false);
         drawFrame(0);
+        resetExplanation();
         updateStatus("No records");
         return;
       }
@@ -382,6 +578,12 @@
     speedInput = document.getElementById("replay-speed");
     speedValue = document.getElementById("replay-speed-value");
     replayStatus = document.getElementById("replay-status");
+    explanationButton = document.getElementById("explanation-load");
+    explanationSource = document.getElementById("explanation-source");
+    explanationText = document.getElementById("explanation-text");
+    eventSummary = document.getElementById("event-summary");
+    strokeDetailGrid = document.getElementById("stroke-detail-grid");
+    dataEventTable = document.getElementById("data-event-table");
     metricEls = {
       recordId: document.getElementById("replay-record-id"),
       target: document.getElementById("replay-target"),
@@ -396,6 +598,8 @@
     fitCanvas();
     setControlsEnabled(false);
     updateMetrics();
+    renderStrokeEvents();
+    resetExplanation();
 
     window.addEventListener("resize", fitCanvas);
     recordSelect.addEventListener("change", function () {
@@ -404,6 +608,9 @@
     playButton.addEventListener("click", play);
     pauseButton.addEventListener("click", pause);
     resetButton.addEventListener("click", reset);
+    if (explanationButton) {
+      explanationButton.addEventListener("click", loadExplanation);
+    }
     speedInput.addEventListener("input", function () {
       speedValue.textContent = getSpeed() + "x";
       if (animationFrame !== null) {

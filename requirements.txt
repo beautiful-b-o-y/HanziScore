@@ -1,1 +1,4 @@
 Flask>=3.1,<4
+
+# Zhipu API is called through Python standard-library urllib.
+# No separate Zhipu SDK package is required for this demo.

@@ -2,6 +2,7 @@ import math
 import unittest
 
 from app import PAUSE_THRESHOLD_MS, calculate_metrics
+from analysis import build_analysis
 
 
 class MetricsTest(unittest.TestCase):
@@ -40,6 +41,43 @@ class MetricsTest(unittest.TestCase):
         )
         self.assertEqual(metrics["pauseCount"], 1)
         self.assertEqual(metrics["pauses"][0]["durationMs"], PAUSE_THRESHOLD_MS)
+
+    def test_build_analysis_adds_stroke_events_without_losing_raw_points(self):
+        strokes = [
+            {
+                "id": "stroke-1",
+                "pointerType": "mouse",
+                "points": [
+                    {"x": 0, "y": 0, "t": 0, "pressure": 0.5},
+                    {"x": 80, "y": 0, "t": 100, "pressure": 0.5},
+                    {"x": 80, "y": 80, "t": 200, "pressure": 0.5},
+                    {"x": 82, "y": 82, "t": 1500, "pressure": 0.5},
+                ],
+            }
+        ]
+
+        analysis = build_analysis(strokes, PAUSE_THRESHOLD_MS)
+        stroke_event = analysis["strokes"][0]
+
+        self.assertEqual(stroke_event["raw_points"], strokes[0]["points"])
+        self.assertIn("normalized_points", stroke_event["geometry"])
+        self.assertIn("resampled_points", stroke_event["geometry"])
+        self.assertEqual(stroke_event["geometry"]["bbox"]["width"], 82)
+        self.assertGreater(stroke_event["geometry"]["path_length"], 160)
+        self.assertGreaterEqual(len(stroke_event["geometry"]["turning_points"]), 1)
+        self.assertIn("speed_profile", stroke_event["dynamics"])
+        self.assertIn("acceleration_profile", stroke_event["dynamics"])
+        self.assertIn("mean_speed", stroke_event["dynamics"])
+        self.assertIn("max_speed", stroke_event["dynamics"])
+        self.assertIn("speed_variance", stroke_event["dynamics"])
+        self.assertTrue(any(segment["type"] == "turn" for segment in stroke_event["segments"]))
+        self.assertEqual(
+            stroke_event["visual_proxy"]["width_profile_source"],
+            "simulated_from_speed",
+        )
+        self.assertTrue(
+            any(event["type"] == "sharp_turn" for event in analysis["event_summary"]["data_events"])
+        )
 
 
 if __name__ == "__main__":

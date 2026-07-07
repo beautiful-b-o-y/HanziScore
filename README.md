@@ -1,25 +1,24 @@
 # HanziScore 字谱
 
-HanziScore 是一个五天轻量 Demo，用来记录一个汉字怎样被写出来，而不是识别、纠错或评分。
+HanziScore is a lightweight Flask demo for recording how a Chinese character is written. It records strokes, timing, pressure, replay data, local metrics, and an optional AI explanation. It does not recognize characters, correct stroke order, or score calligraphy.
 
 ## Current Status
 
-Phase 4 is complete:
+Phase 6 is complete:
 
 - Canvas renders a writing guide.
 - Pointer Events capture strokes and points.
 - Each point keeps `x`, `y`, `t`, and `pressure`.
-- Clear and save controls are available.
-- Save writes the capture JSON to `data/samples/`.
+- Save writes capture JSON to `data/samples/`.
 - Flask calculates stroke count, duration, path length, average speed, and pauses.
 - Analysis JSON is written to `data/analyses/`.
 - Saved records can be loaded for Canvas replay.
 - Replay supports play, pause, reset, and speed control.
-- AI explanation is reserved for Phase 5.
+- AI explanation uses cache, Zhipu API, or local rules.
+- Analysis JSON now includes stroke event records with geometry, dynamics, simple
+  segment labels, visual proxy data, and data event labels.
 
 ## Run Locally
-
-当前项目包含 Flask 骨架、首页模板、静态资源、JSON 数据目录、Canvas 书写采集、基础指标计算和前端回放。
 
 ```powershell
 py -m venv .venv
@@ -28,48 +27,123 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-打开：
+Open:
 
 ```text
 http://127.0.0.1:5000
 ```
 
-健康检查：
+Health check:
 
 ```text
 http://127.0.0.1:5000/health
 ```
 
-## Python
+## Zhipu API Key
 
-建议优先使用 Python 3.12 或 3.13。当前本机 `py` 启动器检测到 Python 3.14.6，如果依赖安装和运行都正常，也可以继续用于本地 Demo。
+AI explanation reads the Zhipu API key from the local environment variable `ZHIPU_API_KEY`. Do not write keys into source code.
 
-## OpenAI API Key
-
-阶段 5 才会接入 OpenAI。届时后端会从系统环境变量读取 API key，不会把 key 写入项目文件。
-
-PowerShell 临时配置：
+PowerShell temporary setup:
 
 ```powershell
-$env:OPENAI_API_KEY = "your_api_key_here"
+$env:ZHIPU_API_KEY = "your_zhipu_api_key_here"
 ```
 
-PowerShell 持久配置：
+PowerShell persistent setup:
 
 ```powershell
-setx OPENAI_API_KEY "your_api_key_here"
+setx ZHIPU_API_KEY "your_zhipu_api_key_here"
 ```
 
-配置后重新打开一个 PowerShell 窗口再运行项目。
+After `setx`, open a new PowerShell or restart VS Code before running the app.
+
+The default model is:
+
+```text
+glm-5.2
+```
+
+You can override it for local testing:
+
+```powershell
+$env:ZHIPU_MODEL = "glm-5.2"
+```
+
+The API read timeout defaults to 60 seconds. You can raise it for slower models:
+
+```powershell
+$env:ZHIPU_TIMEOUT_SECONDS = "90"
+```
+
+Connection-level failures are retried twice by default. You can tune this locally:
+
+```powershell
+$env:ZHIPU_MAX_RETRIES = "3"
+```
+
+The Zhipu request only sends locally calculated writing statistics and stroke-level `dataEvents` evidence such as event type, value, threshold, unit, and stroke index. It does not upload raw trajectory point arrays.
+
+If Zhipu is unavailable, the API key is missing, quota is reached, or the response is invalid, HanziScore automatically returns a local template explanation and shows the fallback reason in the UI.
+
+## AI Explanation Protocol
+
+AI explanations are used to organize local measurements into readable research
+notes. They are not a substitute for a calligraphy teacher and are not aesthetic
+scores.
+
+The explanation protocol asks for:
+
+- `summary`: a short overview of what the explanation is doing.
+- `evidence`: concrete numeric facts and triggered `dataEvents`.
+- `rhythm_interpretation`: a cautious interpretation of timing and motion
+  relationships.
+- `candidate_labels`: open-coding candidates such as rhythm shift, slow ending,
+  or sharp turn, each with evidence and uncertainty.
+- `uncertainty`: what the current evidence cannot prove.
+- `observation_questions`: follow-up questions for comparing future samples.
+- `caution`: explicit scope limits.
+
+AI and local fallback explanations must cite local metrics or `dataEvents`, keep
+uncertainty visible, and avoid character recognition, stroke-order judgment,
+calligraphy scoring, component detection, personality inference, ability
+inference, or claims about the writer's real emotional state.
+
+## Phase 6 Stroke Event Fields
+
+Saved samples still keep the original raw capture payload under `data/samples/`.
+Analysis files under `data/analyses/` add a `strokes` array. Each analyzed stroke
+contains:
+
+- `raw_points`: the original per-stroke point list preserved for local JSON review.
+- `geometry`: `normalized_points`, `resampled_points`, `bbox`, `path_length`,
+  `centroid`, `start_point`, `end_point`, `angle_profile`, `curvature_profile`,
+  and `turning_points`.
+- `dynamics`: `speed_profile`, `acceleration_profile`, `mean_speed`,
+  `max_speed`, `speed_variance`, `pause_before_ms`, `pause_after_ms`, and
+  `duration_ms`.
+- `segments`: lightweight `start`, `move`, `turn`, and `end` segment markers.
+- `visual_proxy`: a local drawing proxy. Mouse input is marked
+  `simulated_from_speed`; it is not claimed to be real pressure.
+- `labels`: threshold-based `data_events` such as `low_speed_stroke`,
+  `high_speed_stroke`, `long_duration_stroke`, `long_pause_before`,
+  `long_pause_after`, `speed_variation`, `fast_start`, `slow_end`, and
+  `sharp_turn`.
+
+The analysis also includes `event_summary.data_events`, a compact list used by
+the frontend event table and by AI/local explanation evidence.
+
+These events describe movement data only. They are not character recognition,
+stroke-order standards, calligraphy scores, component detection, expert
+calligraphy terminology, or model-training labels.
 
 ## Scope
 
-本项目保持轻量：
+The project stays lightweight:
 
 - Python + Flask
-- 原生 HTML/CSS/JavaScript
+- Native HTML/CSS/JavaScript
 - Canvas + Pointer Events
-- JSON 文件存储
-- AI 解释必须回退到缓存或本地规则
+- JSON file storage
+- AI explanation must fall back to cache or local rules
 
-不会引入 React、Vue、TypeScript、构建工具、Docker、数据库、登录、云部署、模型训练、汉字识别、笔顺纠错或书法评分。
+The project does not add React, Vue, TypeScript, build tools, Docker, a database, login, cloud deployment, model training, Chinese character recognition, stroke-order correction, or calligraphy scoring.

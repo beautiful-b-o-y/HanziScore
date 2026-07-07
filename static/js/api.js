@@ -61,11 +61,27 @@
     return result;
   }
 
+  async function getExplanation(recordId) {
+    const response = await fetch("/api/records/" + encodeURIComponent(recordId) + "/explanation", {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Explanation load failed");
+    }
+
+    return result;
+  }
+
   window.HanziScoreApi = {
     health,
     submitCapture,
     listRecords,
     getRecord,
+    getExplanation,
   };
 
   document.addEventListener("DOMContentLoaded", async function () {

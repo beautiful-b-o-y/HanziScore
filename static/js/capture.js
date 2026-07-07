@@ -187,7 +187,7 @@
       pointCount.textContent = String(totalPoints);
     }
     if (pointerTypes) {
-      pointerTypes.textContent = types.length ? types.join(", ") : "未开始";
+      pointerTypes.textContent = types.length ? types.join(", ") : "Not started";
     }
     if (clearButton) {
       clearButton.disabled = visibleStrokes.length === 0;

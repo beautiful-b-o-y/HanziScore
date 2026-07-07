@@ -41,14 +41,17 @@ End-to-end loop:
 
 - Primary browser target: Chrome.
 - Input support target: mouse, touchpad, and pressure stylus where Pointer Events expose pressure. If only one path is available, support mouse first.
-- AI provider target: OpenAI.
-- The OpenAI API key must be read from local environment variable `OPENAI_API_KEY`; never commit secrets.
+- AI provider target: Zhipu API.
+- The Zhipu API key must be read from local environment variable `ZHIPU_API_KEY`; never commit secrets.
+- The Zhipu model may be overridden locally with `ZHIPU_MODEL`.
+- The Zhipu API read timeout may be overridden locally with `ZHIPU_TIMEOUT_SECONDS`.
+- The Zhipu connection-level retry count may be overridden locally with `ZHIPU_MAX_RETRIES`.
 - Python 3.12 or 3.13 is preferred for stability. Python 3.14.6 is currently available through the Windows `py` launcher and can be used if dependencies work.
 - The user wants Git and plans to upload the project to GitHub.
 
 ## Current State
 
-Phase 4 is complete.
+Phase 5 is complete.
 
 Implemented:
 
@@ -64,10 +67,12 @@ Implemented:
 - Analysis JSON is written to `data/analyses/`.
 - Saved records can be listed and loaded through Flask JSON APIs.
 - Frontend replay is implemented with play, pause, reset, speed control, and metrics display.
+- AI explanation uses cache, Zhipu API, or local rules.
+- Zhipu requests send only local metrics and pause summaries, not raw trajectory point arrays.
 
 Not implemented yet:
 
-- AI/cache/local-rule explanation.
+- None for the current five-phase demo scope.
 
 ## Phase Plan
 
@@ -112,15 +117,16 @@ Acceptance:
 
 Acceptance:
 
-- Explanation first checks cache.
-- If `OPENAI_API_KEY` is configured, OpenAI can generate an explanation.
-- If OpenAI is unavailable, local rules generate a fallback explanation.
+- Explanation first checks cache when appropriate.
+- If `ZHIPU_API_KEY` is configured, Zhipu API can generate an explanation.
+- If Zhipu is unavailable, the API key is missing, quota is reached, or the response is invalid, local rules generate a fallback explanation.
 - Output explains writing process data, not character correctness or calligraphy quality.
+- Raw trajectory points are not sent to Zhipu.
 
 ## Development Rules
 
 - Work one phase at a time.
-- Do not start the next phase until the user confirms.
+- Do not start a new post-demo phase until the user confirms.
 - Keep edits small and easy to review.
 - Prefer standard library helpers and plain Flask patterns.
 - Use `.venv` for local dependencies.
@@ -135,7 +141,18 @@ Use PowerShell from the repository root.
 py -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
 .\.venv\Scripts\python -m py_compile app.py
+.\.venv\Scripts\python -m unittest discover -s tests -v
 .\.venv\Scripts\python -c "from app import create_app; app=create_app(); client=app.test_client(); print(client.get('/').status_code); print(client.get('/health').json)"
+.\.venv\Scripts\python app.py
+```
+
+For Zhipu testing in the same PowerShell session:
+
+```powershell
+$env:ZHIPU_API_KEY = "your_zhipu_api_key_here"
+$env:ZHIPU_MODEL = "glm-5.2"
+$env:ZHIPU_TIMEOUT_SECONDS = "60"
+$env:ZHIPU_MAX_RETRIES = "2"
 .\.venv\Scripts\python app.py
 ```
 

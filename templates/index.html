@@ -37,7 +37,7 @@
         </div>
 
         <aside class="side-panel" aria-label="当前状态">
-          <h2>阶段 4</h2>
+          <h2>阶段 6</h2>
           <dl class="capture-metrics">
             <div>
               <dt>笔画</dt>
@@ -137,8 +137,41 @@
               <dd id="replay-pauses">--</dd>
             </div>
           </dl>
+          <div class="explanation-panel" aria-label="书写解释">
+            <div class="explanation-header">
+              <h3>书写解释</h3>
+              <span class="source-pill" id="explanation-source">--</span>
+            </div>
+            <button type="button" id="explanation-load" disabled>生成解释</button>
+            <p class="explanation-text" id="explanation-text">选择一条记录后可生成解释。</p>
+          </div>
           <p class="capture-status" id="replay-status">Ready</p>
         </aside>
+      </section>
+
+      <section class="event-workspace" aria-label="Stroke event details">
+        <div class="event-header">
+          <h2>Stroke Events</h2>
+          <p id="event-summary">Select a saved record to view stroke-level events.</p>
+        </div>
+        <div class="stroke-detail-grid" id="stroke-detail-grid"></div>
+        <div class="event-table-wrap">
+          <table class="event-table">
+            <thead>
+              <tr>
+                <th>Stroke</th>
+                <th>Event</th>
+                <th>Value</th>
+                <th>Threshold</th>
+              </tr>
+            </thead>
+            <tbody id="data-event-table">
+              <tr>
+                <td colspan="4">No record loaded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
   </body>
